@@ -58,7 +58,7 @@ Download [finetuned Shap-E](https://huggingface.co/datasets/tiange/Cap3D/blob/ma
 
 Text-to-3D Generation
 ```
-python launch.py --config configs/gaussiandreamer-sd.yaml --train --gpu 0 system.prompt_processor.prompt="a fox"
+python launch.py --config configs/gaussiandreamer-sd.yaml --train --gpu 1 system.prompt_processor.prompt="a fox"
 
 # if you want to import the generated 3D assets into the Unity game engine.
 python launch.py --config configs/gaussiandreamer-sd.yaml --train --gpu 0 system.prompt_processor.prompt="a fox" system.sh_degree=3 

@@ -148,29 +148,38 @@ class BaseSystem(pl.LightningModule, Updateable, SaverMixin):
     def on_train_batch_start(self, batch, batch_idx, unused=0):
         self.preprocess_data(batch, "train")
         self.dataset = self.trainer.train_dataloader.dataset
-        # print(f"on train batch start before update_if_possible: {self.true_current_epoch}, {self.true_global_step}")
+        print(f"on train batch start before update_if_possible: {self.true_current_epoch}, {self.true_global_step}")
         update_if_possible(self.dataset, self.true_current_epoch, self.true_global_step)
-        # print(f"on train batch start after update_if_possible: {self.true_current_epoch}, {self.true_global_step}")
+        print(f"on train batch start after update_if_possible: {self.true_current_epoch}, {self.true_global_step}")
         self.do_update_step(self.true_current_epoch, self.true_global_step)
-        # print(f"on train batch start, but after do_update_step: {self.true_current_epoch}, {self.true_global_step}")
+        print(f"on train batch start, but after do_update_step: {self.true_current_epoch}, {self.true_global_step}")
 
     def on_validation_batch_start(self, batch, batch_idx, dataloader_idx=0):
         self.preprocess_data(batch, "validation")
         self.dataset = self.trainer.val_dataloaders.dataset
+        print(f"on_validation_batch_start before update_if_possible: {self.true_current_epoch}, {self.true_global_step}")
         update_if_possible(self.dataset, self.true_current_epoch, self.true_global_step)
+        print(f"on_validation_batch_start after update_if_possible: {self.true_current_epoch}, {self.true_global_step}")
         self.do_update_step(self.true_current_epoch, self.true_global_step)
+        print(f"on_validation_batch_start, but after do_update_step: {self.true_current_epoch}, {self.true_global_step}")
 
     def on_test_batch_start(self, batch, batch_idx, dataloader_idx=0):
         self.preprocess_data(batch, "test")
         self.dataset = self.trainer.test_dataloaders.dataset
+        print(f"on_test_batch_start before update_if_possible: {self.true_current_epoch}, {self.true_global_step}")
         update_if_possible(self.dataset, self.true_current_epoch, self.true_global_step)
+        print(f"on_test_batch_start after update_if_possible: {self.true_current_epoch}, {self.true_global_step}")
         self.do_update_step(self.true_current_epoch, self.true_global_step)
+        print(f"on_test_batch_start, but after do_update_step: {self.true_current_epoch}, {self.true_global_step}")
 
     def on_predict_batch_start(self, batch, batch_idx, dataloader_idx=0):
         self.preprocess_data(batch, "predict")
         self.dataset = self.trainer.predict_dataloaders.dataset
+        print(f"on_predict_batch_start before update_if_possible: {self.true_current_epoch}, {self.true_global_step}")
         update_if_possible(self.dataset, self.true_current_epoch, self.true_global_step)
+        print(f"on_predict_batch_start after update_if_possible: {self.true_current_epoch}, {self.true_global_step}")
         self.do_update_step(self.true_current_epoch, self.true_global_step)
+        print(f"on_predict_batch_start, but after do_update_step: {self.true_current_epoch}, {self.true_global_step}")
 
     def update_step(self, epoch: int, global_step: int, on_load_weights: bool = False):
         pass

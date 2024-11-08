@@ -321,7 +321,7 @@ class GaussianDreamer(BaseLift3DSystem):
             rgb_as_latents=False,
             guidance_eval=guidance_eval
         )
-        
+
         # 计算总损失
         loss = 0.0
         
@@ -339,6 +339,10 @@ class GaussianDreamer(BaseLift3DSystem):
         self.log("train/loss_opaque", loss_opaque)
         loss += loss_opaque * self.C(self.cfg.loss.lambda_opaque)
         
+        print(f"loss: {loss}")
+
+        print("ready for guidance_eval") 
+
         # 如果是评估步骤，保存评估结果
         if guidance_eval:
             self.guidance_evaluation_save(
@@ -346,20 +350,18 @@ class GaussianDreamer(BaseLift3DSystem):
                 guidance_out["eval"],
             )
         
+        print("guidance_out")
+
         # 记录所有损失参数
         for name, value in self.cfg.loss.items():
             self.log(f"train_params/{name}", self.C(value))
 
-
         self.manual_backward(loss)  #  automatic_optimization = False
-        return {"loss": loss}
+        print("backward complete")
 
-
-    def on_before_optimizer_step(self, optimizer):
         with torch.no_grad():
 
-            if self.true_global_step < self.opt.densify_until_iter:
-    
+            if self.true_global_step < 900: # self.opt.densify_until_iter:
                 viewspace_point_tensor_grad = torch.zeros_like(self.viewspace_point_list[0])
                 for idx in range(len(self.viewspace_point_list)):
                     viewspace_point_tensor_grad += self.viewspace_point_list[idx].grad
@@ -373,10 +375,10 @@ class GaussianDreamer(BaseLift3DSystem):
                     viewspace_point_tensor_grad, 
                     self.visibility_filter
                 )
-
-                if self.true_global_step > self.opt.densify_from_iter and (self.true_global_step) % self.opt.densification_interval == 0:
-                    size_threshold = 20 if self.true_global_step > self.opt.opacity_reset_interval else None
-                    self.gaussian.densify_and_prune(self.opt.densify_grad_threshold, 0.005, self.cameras_extent, size_threshold)
+                if self.true_global_step > 300 and self.true_global_step % 100 == 0:  # if self.true_global_step > self.opt.densify_from_iter and (self.true_global_step) % self.opt.densification_interval == 0:
+                    size_threshold = 20 if self.true_global_step > 500 else None # self.opt.opacity_reset_interval
+                    # self.gaussian.densify_and_prune(self.opt.densify_grad_threshold, 0.005, self.cameras_extent, size_threshold)
+                    self.gaussian.densify_and_prune(0.0002, 0.05, self.cameras_extent, size_threshold)
                 
                 # if self.true_global_step % self.opt.opacity_reset_interval == 0 or (self.bg_color == [0, 0, 0] and self.true_global_step == self.opt.densify_from_iter):
                 #     self.gaussian.reset_opacity()
@@ -384,13 +386,67 @@ class GaussianDreamer(BaseLift3DSystem):
                 if self.true_global_step % self.opt.mask_prune_iter == 0:
                     self.gaussian.mask_prune()
 
+            print("ready for optimizer step")
             if self.true_global_step < self.opt.iterations:
-                optimizer, optimizer_net, scheduler_net = self.optimizers()
+                optimizer, optimizer_net = self.optimizers()
+                scheduler_net = self.lr_schedulers()
+                print("1")
                 optimizer.step()
+                print("2")
                 optimizer.zero_grad(set_to_none = True)
+                print("3")
                 optimizer_net.step()
+                print("4")
                 optimizer_net.zero_grad(set_to_none = True)
+                print("5")
                 scheduler_net.step()
+                print("6")
+
+        return {"loss": loss}
+
+
+    # def on_before_optimizer_step(self, optimizer):
+    #     pass
+        # print("on before optimizer step")
+        # with torch.no_grad():
+
+        #     if self.true_global_step < self.opt.densify_until_iter:
+    
+        #         viewspace_point_tensor_grad = torch.zeros_like(self.viewspace_point_list[0])
+        #         for idx in range(len(self.viewspace_point_list)):
+        #             viewspace_point_tensor_grad += self.viewspace_point_list[idx].grad
+                
+        #         self.gaussian.max_radii2D[self.visibility_filter] = torch.max(
+        #             self.gaussian.max_radii2D[self.visibility_filter], 
+        #             self.radii[self.visibility_filter]
+        #         )
+                
+        #         self.gaussian.add_densification_stats(
+        #             viewspace_point_tensor_grad, 
+        #             self.visibility_filter
+        #         )
+
+        #         if self.true_global_step > self.opt.densify_from_iter and (self.true_global_step) % self.opt.densification_interval == 0:
+        #             size_threshold = 20 if self.true_global_step > self.opt.opacity_reset_interval else None
+        #             self.gaussian.densify_and_prune(self.opt.densify_grad_threshold, 0.005, self.cameras_extent, size_threshold)
+                
+        #         # if self.true_global_step % self.opt.opacity_reset_interval == 0 or (self.bg_color == [0, 0, 0] and self.true_global_step == self.opt.densify_from_iter):
+        #         #     self.gaussian.reset_opacity()
+        #     else:
+        #         if self.true_global_step % self.opt.mask_prune_iter == 0:
+        #             self.gaussian.mask_prune()
+
+        #     if self.true_global_step < self.opt.iterations:
+        #         # optimizer, optimizer_net = self.optimizers()
+        #         # scheduler_net = self.lr_schedulers()
+        #         # optimizer.step()
+        #         # optimizer.zero_grad(set_to_none = True)
+        #         # optimizer_net.step()
+        #         # optimizer_net.zero_grad(set_to_none = True)
+        #         # scheduler_net.step()
+        #         optimizer = self.optimizers()
+        #         optimizer.step()
+        #         optimizer.zero_grad(set_to_none = True)
 
 
     def on_train_end(self):
@@ -608,11 +664,8 @@ class GaussianDreamer(BaseLift3DSystem):
         optimizer = self.gaussian.optimizer
         optimizer_net = self.gaussian.optimizer_net
         scheduler_net = self.gaussian.scheduler_net
-        return {
-            "optimizer": [optimizer, optimizer_net],
-            "lr_scheduler": {
-                "scheduler": scheduler_net,
-                "interval": "step"
-            }
-        }
+        return (
+            {"optimizer": optimizer},
+            {"optimizer": optimizer_net, "lr_scheduler": scheduler_net},
+        )
         # return [optimizer, optimizer_net], [scheduler_net]
