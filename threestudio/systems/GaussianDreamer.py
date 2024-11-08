@@ -356,6 +356,11 @@ class GaussianDreamer(BaseLift3DSystem):
         for name, value in self.cfg.loss.items():
             self.log(f"train_params/{name}", self.C(value))
 
+        optimizer, optimizer_net = self.optimizers()
+        scheduler_net = self.lr_schedulers()
+        optimizer.zero_grad(set_to_none = True)
+        optimizer_net.zero_grad(set_to_none = True)
+
         self.manual_backward(loss)  #  automatic_optimization = False
         print("backward complete")
 
@@ -386,21 +391,14 @@ class GaussianDreamer(BaseLift3DSystem):
                 if self.true_global_step % self.opt.mask_prune_iter == 0:
                     self.gaussian.mask_prune()
 
-            print("ready for optimizer step")
             if self.true_global_step < self.opt.iterations:
-                optimizer, optimizer_net = self.optimizers()
-                scheduler_net = self.lr_schedulers()
                 print("1")
                 optimizer.step()
                 print("2")
-                optimizer.zero_grad(set_to_none = True)
-                print("3")
                 optimizer_net.step()
-                print("4")
-                optimizer_net.zero_grad(set_to_none = True)
-                print("5")
+                print("3")
                 scheduler_net.step()
-                print("6")
+                print("4")
 
         return {"loss": loss}
 
